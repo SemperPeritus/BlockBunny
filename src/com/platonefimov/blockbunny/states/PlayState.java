@@ -11,7 +11,7 @@ import static com.platonefimov.blockbunny.managers.Variables.*;
 
 import com.platonefimov.blockbunny.Game;
 import com.platonefimov.blockbunny.managers.StateManager;
-
+import com.platonefimov.blockbunny.managers.ContactListener;
 
 
 public class PlayState extends GameState {
@@ -27,6 +27,7 @@ public class PlayState extends GameState {
         super(stateManager);
 
         world = new World(new Vector2(0, -9.81f), true);
+        world.setContactListener(new ContactListener());
 
         renderer = new Box2DDebugRenderer();
 
@@ -36,22 +37,34 @@ public class PlayState extends GameState {
         BodyDef bodyDef = new BodyDef();
         Body body;
         FixtureDef fixtureDef = new FixtureDef();
-        PolygonShape shape = new PolygonShape();
+        PolygonShape polygonShape = new PolygonShape();
+        CircleShape circleShape = new CircleShape();
 
         bodyDef.position.set(160 / PPM, 120 / PPM);
         bodyDef.type = BodyDef.BodyType.StaticBody;
         body = world.createBody(bodyDef);
-        shape.setAsBox(50 / PPM, 5 / PPM);
-        fixtureDef.shape = shape;
-        body.createFixture(fixtureDef);
+        polygonShape.setAsBox(50 / PPM, 5 / PPM);
+        fixtureDef.shape = polygonShape;
+        fixtureDef.filter.categoryBits = BIT_GROUND;
+        fixtureDef.filter.maskBits = BIT_BOX | BIT_BALL;
+        body.createFixture(fixtureDef).setUserData("ground");
 
         bodyDef.position.set(160 / PPM, 200 / PPM);
         bodyDef.type = BodyDef.BodyType.DynamicBody;
         body = world.createBody(bodyDef);
-        shape.setAsBox(5 / PPM, 5 / PPM);
-        fixtureDef.shape = shape;
-        fixtureDef.restitution = 1f;
-        body.createFixture(fixtureDef);
+        polygonShape.setAsBox(5 / PPM, 5 / PPM);
+        fixtureDef.shape = polygonShape;
+        fixtureDef.filter.categoryBits = BIT_BOX;
+        fixtureDef.filter.maskBits = BIT_GROUND;
+        body.createFixture(fixtureDef).setUserData("box");
+
+        bodyDef.position.set(153 / PPM, 220 / PPM);
+        body = world.createBody(bodyDef);
+        circleShape.setRadius(5 / PPM);
+        fixtureDef.shape = circleShape;
+        fixtureDef.filter.categoryBits = BIT_BALL;
+        fixtureDef.filter.maskBits = BIT_GROUND;
+        body.createFixture(fixtureDef).setUserData("ball");
     }
 
 
