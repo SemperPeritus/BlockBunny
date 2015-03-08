@@ -6,21 +6,16 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 
+import static com.platonefimov.blockbunny.managers.Variables.*;
+
 import com.platonefimov.blockbunny.managers.GameKeys;
 import com.platonefimov.blockbunny.managers.InputProcessor;
 import com.platonefimov.blockbunny.managers.StateManager;
 
 
+
 public class Game implements ApplicationListener {
 
-    public static final String TITLE = "Block Bunny";
-    public static final int V_WIDTH = 320;
-    public static final int V_HEIGHT = 240;
-    public static final int SCALE = 2;
-    public static final int WIDTH = V_WIDTH * SCALE;
-    public static final int HEIGHT = V_HEIGHT * SCALE;
-
-    public static final float SPF = 1 / 60f;
     private float frameTimer;
 
     private OrthographicCamera camera;
