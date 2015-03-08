@@ -6,6 +6,8 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 
+import com.platonefimov.blockbunny.managers.GameKeys;
+import com.platonefimov.blockbunny.managers.InputProcessor;
 import com.platonefimov.blockbunny.managers.StateManager;
 
 
@@ -51,6 +53,8 @@ public class Game implements ApplicationListener {
         spriteBatch = new SpriteBatch();
 
         stateManager = new StateManager(this);
+
+        Gdx.input.setInputProcessor(new InputProcessor());
     }
 
 
@@ -60,6 +64,7 @@ public class Game implements ApplicationListener {
             frameTimer -= SPF;
             stateManager.update(SPF);
             stateManager.render();
+            GameKeys.update();
         }
     }
 

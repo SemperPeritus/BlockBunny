@@ -10,6 +10,7 @@ import com.badlogic.gdx.physics.box2d.*;
 import static com.platonefimov.blockbunny.managers.Variables.*;
 
 import com.platonefimov.blockbunny.Game;
+import com.platonefimov.blockbunny.managers.GameKeys;
 import com.platonefimov.blockbunny.managers.StateManager;
 import com.platonefimov.blockbunny.managers.ContactListener;
 
@@ -22,12 +23,17 @@ public class PlayState extends GameState {
 
     private OrthographicCamera box2DCamera;
 
+    private ContactListener contactListener;
+
+    private Body playerBody;
+
 
     public PlayState(StateManager stateManager) {
         super(stateManager);
 
         world = new World(new Vector2(0, -9.81f), true);
-        world.setContactListener(new ContactListener());
+        contactListener = new ContactListener();
+        world.setContactListener(contactListener);
 
         renderer = new Box2DDebugRenderer();
 
@@ -38,42 +44,47 @@ public class PlayState extends GameState {
         Body body;
         FixtureDef fixtureDef = new FixtureDef();
         PolygonShape polygonShape = new PolygonShape();
-        CircleShape circleShape = new CircleShape();
 
+        // Ground creating
         bodyDef.position.set(160 / PPM, 120 / PPM);
         bodyDef.type = BodyDef.BodyType.StaticBody;
         body = world.createBody(bodyDef);
         polygonShape.setAsBox(50 / PPM, 5 / PPM);
         fixtureDef.shape = polygonShape;
         fixtureDef.filter.categoryBits = BIT_GROUND;
-        fixtureDef.filter.maskBits = BIT_BOX | BIT_BALL;
+        fixtureDef.filter.maskBits = BIT_PLAYER;
         body.createFixture(fixtureDef).setUserData("ground");
 
+        // Player creating
         bodyDef.position.set(160 / PPM, 200 / PPM);
         bodyDef.type = BodyDef.BodyType.DynamicBody;
-        body = world.createBody(bodyDef);
+        playerBody = world.createBody(bodyDef);
         polygonShape.setAsBox(5 / PPM, 5 / PPM);
         fixtureDef.shape = polygonShape;
-        fixtureDef.filter.categoryBits = BIT_BOX;
+        fixtureDef.filter.categoryBits = BIT_PLAYER;
         fixtureDef.filter.maskBits = BIT_GROUND;
-        body.createFixture(fixtureDef).setUserData("box");
-
-        bodyDef.position.set(153 / PPM, 220 / PPM);
-        body = world.createBody(bodyDef);
-        circleShape.setRadius(5 / PPM);
-        fixtureDef.shape = circleShape;
-        fixtureDef.filter.categoryBits = BIT_BALL;
+        playerBody.createFixture(fixtureDef).setUserData("Player");
+        // Player's foot creating
+        polygonShape.setAsBox(2 / PPM, 2 / PPM, new Vector2(0, -5 / PPM), 0);
+        fixtureDef.shape = polygonShape;
+        fixtureDef.filter.categoryBits = BIT_PLAYER;
         fixtureDef.filter.maskBits = BIT_GROUND;
-        body.createFixture(fixtureDef).setUserData("ball");
+        fixtureDef.isSensor = true;
+        playerBody.createFixture(fixtureDef).setUserData("foot");
     }
 
 
     public void update(float deltaTime) {
+        handleInput();
+
         world.step(deltaTime, 6, 2);
     }
 
 
     public void handleInput() {
+        if (GameKeys.isPressed(GameKeys.BUTTON_1))
+            if (contactListener.isPlayerOnGround())
+                playerBody.applyForceToCenter(0, 200, true);
     }
 
 
