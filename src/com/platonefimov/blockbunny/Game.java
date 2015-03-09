@@ -10,6 +10,7 @@ import static com.platonefimov.blockbunny.managers.Variables.*;
 
 import com.platonefimov.blockbunny.managers.GameKeys;
 import com.platonefimov.blockbunny.managers.InputProcessor;
+import com.platonefimov.blockbunny.managers.Resources;
 import com.platonefimov.blockbunny.managers.StateManager;
 
 
@@ -24,6 +25,8 @@ public class Game implements ApplicationListener {
     private SpriteBatch spriteBatch;
 
     private StateManager stateManager;
+
+    public static Resources resources;
 
 
     public SpriteBatch getSpriteBatch() {
@@ -47,6 +50,9 @@ public class Game implements ApplicationListener {
 
         spriteBatch = new SpriteBatch();
 
+        resources = new Resources();
+        resources.loadTexture("images/bunny.png", "bunny");
+
         stateManager = new StateManager(this);
 
         Gdx.input.setInputProcessor(new InputProcessor());
@@ -61,6 +67,8 @@ public class Game implements ApplicationListener {
             stateManager.render();
             GameKeys.update();
         }
+
+        spriteBatch.setProjectionMatrix(hudCamera.combined);
     }
 
 
@@ -70,9 +78,6 @@ public class Game implements ApplicationListener {
     }
     public void resume() {
     }
-
-
     public void dispose() {
-
     }
 }

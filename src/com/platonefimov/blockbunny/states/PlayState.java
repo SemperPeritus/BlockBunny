@@ -14,6 +14,7 @@ import com.badlogic.gdx.physics.box2d.*;
 
 import static com.platonefimov.blockbunny.managers.Variables.*;
 
+import com.platonefimov.blockbunny.entities.Player;
 import com.platonefimov.blockbunny.managers.GameKeys;
 import com.platonefimov.blockbunny.managers.StateManager;
 import com.platonefimov.blockbunny.managers.ContactListener;
@@ -25,17 +26,14 @@ public class PlayState extends GameState {
     private World world;
 
     private Box2DDebugRenderer renderer;
-
     private OrthographicCamera box2DCamera;
 
     private ContactListener contactListener;
 
-    private Body playerBody;
-
-    private TiledMap tiledMap;
     private OrthogonalTiledMapRenderer mapRenderer;
-
     private float tileSize;
+
+    private Player player;
 
 
     public PlayState(StateManager stateManager) {
@@ -44,46 +42,67 @@ public class PlayState extends GameState {
         world = new World(new Vector2(0, -9.81f), true);
         contactListener = new ContactListener();
         world.setContactListener(contactListener);
-
         renderer = new Box2DDebugRenderer();
-
         box2DCamera = new OrthographicCamera();
         box2DCamera.setToOrtho(false, V_WIDTH / PPM, V_HEIGHT / PPM);
 
+        createPlayer();
+        createTiles();
+    }
+
+
+    private void createPlayer() {
         BodyDef bodyDef = new BodyDef();
         FixtureDef fixtureDef = new FixtureDef();
         PolygonShape polygonShape = new PolygonShape();
+        Body playerBody;
 
-        // Player creating
-        bodyDef.position.set(160 / PPM, 200 / PPM);
+        bodyDef.position.set(50 / PPM, 200 / PPM);
         bodyDef.type = BodyDef.BodyType.DynamicBody;
+        bodyDef.linearVelocity.set(0, 0);
         playerBody = world.createBody(bodyDef);
-        polygonShape.setAsBox(5 / PPM, 5 / PPM);
+        polygonShape.setAsBox(13 / PPM, 13 / PPM);
         fixtureDef.shape = polygonShape;
         fixtureDef.filter.categoryBits = BIT_PLAYER;
         fixtureDef.filter.maskBits = BIT_RED;
         playerBody.createFixture(fixtureDef).setUserData("Player");
-        // Player's foot creating
-        polygonShape.setAsBox(2 / PPM, 2 / PPM, new Vector2(0, -5 / PPM), 0);
+
+        polygonShape.setAsBox(13 / PPM, 2 / PPM, new Vector2(0, -13 / PPM), 0);
         fixtureDef.shape = polygonShape;
         fixtureDef.filter.categoryBits = BIT_PLAYER;
         fixtureDef.filter.maskBits = BIT_RED;
         fixtureDef.isSensor = true;
         playerBody.createFixture(fixtureDef).setUserData("foot");
 
-        tiledMap = new TmxMapLoader().load("maps/level_1.tmx");
+        player = new Player(playerBody);
+
+        playerBody.setUserData(player);
+    }
+
+
+    private void createTiles() {
+        TiledMap tiledMap = new TmxMapLoader().load("maps/level_1.tmx");
         mapRenderer = new OrthogonalTiledMapRenderer(tiledMap);
+        tileSize = Integer.parseInt(tiledMap.getProperties().get("tilewidth").toString());
 
-        TiledMapTileLayer redLayer = (TiledMapTileLayer) tiledMap.getLayers().get("Red layer");
+        TiledMapTileLayer layer;
+        layer = (TiledMapTileLayer) tiledMap.getLayers().get("Red layer");
+        createLayer(layer, BIT_RED);
+        layer = (TiledMapTileLayer) tiledMap.getLayers().get("Green layer");
+        createLayer(layer, BIT_GREEN);
+        layer = (TiledMapTileLayer) tiledMap.getLayers().get("Blue layer");
+        createLayer(layer, BIT_BLUE);
+    }
 
-        tileSize = redLayer.getTileWidth();
 
-        // Blocks creating
+    private void createLayer(TiledMapTileLayer layer, short bits) {
+        BodyDef bodyDef = new BodyDef();
+        FixtureDef fixtureDef = new FixtureDef();
         Cell cell;
         Vector2[] vector2s = new Vector2[3];
-        for (int row = 0; row < redLayer.getHeight(); row++) {
-            for (int col = 0; col < redLayer.getWidth(); col++) {
-                cell = redLayer.getCell(col, row);
+        for (int row = 0; row < layer.getHeight(); row++) {
+            for (int col = 0; col < layer.getWidth(); col++) {
+                cell = layer.getCell(col, row);
 
                 if (cell == null)
                     continue;
@@ -92,20 +111,21 @@ public class PlayState extends GameState {
 
                 bodyDef.type = BodyDef.BodyType.StaticBody;
                 bodyDef.position.set((col + DIV_SCALE) * tileSize / PPM, (row + DIV_SCALE) * tileSize / PPM);
+
                 vector2s[0] = new Vector2(-tileSize * DIV_SCALE / PPM, -tileSize * DIV_SCALE / PPM);
                 vector2s[1] = new Vector2(-tileSize * DIV_SCALE / PPM, tileSize * DIV_SCALE / PPM);
                 vector2s[2] = new Vector2(tileSize * DIV_SCALE / PPM, tileSize * DIV_SCALE / PPM);
                 ChainShape chainShape = new ChainShape();
                 chainShape.createChain(vector2s);
+
                 fixtureDef.friction = 0;
                 fixtureDef.shape = chainShape;
-                fixtureDef.filter.categoryBits = BIT_RED;
+                fixtureDef.filter.categoryBits = bits;
                 fixtureDef.filter.maskBits = BIT_PLAYER;
-                fixtureDef.isSensor = false;
+
                 world.createBody(bodyDef).createFixture(fixtureDef);
             }
         }
-        // END Blocks creating
     }
 
 
@@ -113,13 +133,15 @@ public class PlayState extends GameState {
         handleInput();
 
         world.step(deltaTime, 6, 2);
+
+        player.update(deltaTime);
     }
 
 
     public void handleInput() {
         if (GameKeys.isPressed(GameKeys.BUTTON_1))
             if (contactListener.isPlayerOnGround())
-                playerBody.applyForceToCenter(0, JUMP_FORCE, true);
+                player.body.applyForceToCenter(0, JUMP_FORCE, true);
     }
 
 
@@ -128,6 +150,10 @@ public class PlayState extends GameState {
 
         mapRenderer.setView(camera);
         mapRenderer.render();
+
+        spriteBatch.setProjectionMatrix(camera.combined);
+
+        player.render(spriteBatch);
 
         renderer.render(world, box2DCamera.combined);
     }
