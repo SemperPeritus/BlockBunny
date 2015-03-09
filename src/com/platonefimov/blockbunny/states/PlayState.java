@@ -4,6 +4,8 @@ package com.platonefimov.blockbunny.states;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
+import com.badlogic.gdx.maps.MapLayer;
+import com.badlogic.gdx.maps.MapObject;
 import com.badlogic.gdx.maps.tiled.TiledMap;
 import com.badlogic.gdx.maps.tiled.TiledMapTileLayer;
 import com.badlogic.gdx.maps.tiled.TiledMapTileLayer.Cell;
@@ -11,9 +13,12 @@ import com.badlogic.gdx.maps.tiled.TmxMapLoader;
 import com.badlogic.gdx.maps.tiled.renderers.OrthogonalTiledMapRenderer;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.*;
+import com.badlogic.gdx.utils.Array;
 
 import static com.platonefimov.blockbunny.managers.Variables.*;
 
+import com.platonefimov.blockbunny.Game;
+import com.platonefimov.blockbunny.entities.Crystal;
 import com.platonefimov.blockbunny.entities.Player;
 import com.platonefimov.blockbunny.managers.GameKeys;
 import com.platonefimov.blockbunny.managers.StateManager;
@@ -25,15 +30,19 @@ public class PlayState extends GameState {
 
     private World world;
 
-    private Box2DDebugRenderer renderer;
+    private Box2DDebugRenderer debugRenderer;
     private OrthographicCamera box2DCamera;
 
     private ContactListener contactListener;
 
     private OrthogonalTiledMapRenderer mapRenderer;
+
+    private TiledMap tiledMap;
     private float tileSize;
 
     private Player player;
+
+    private Array<Crystal> crystals;
 
 
     public PlayState(StateManager stateManager) {
@@ -42,12 +51,22 @@ public class PlayState extends GameState {
         world = new World(new Vector2(0, -9.81f), true);
         contactListener = new ContactListener();
         world.setContactListener(contactListener);
-        renderer = new Box2DDebugRenderer();
+        debugRenderer = new Box2DDebugRenderer();
         box2DCamera = new OrthographicCamera();
         box2DCamera.setToOrtho(false, V_WIDTH / PPM, V_HEIGHT / PPM);
 
+        loadResources();
+
         createPlayer();
         createTiles();
+
+        createCrystals();
+    }
+
+
+    private void loadResources() {
+        Game.resources.loadTexture("images/bunny.png", "bunny");
+        Game.resources.loadTexture("images/crystal.png", "crystal");
     }
 
 
@@ -59,12 +78,12 @@ public class PlayState extends GameState {
 
         bodyDef.position.set(50 / PPM, 200 / PPM);
         bodyDef.type = BodyDef.BodyType.DynamicBody;
-        bodyDef.linearVelocity.set(0, 0);
+        bodyDef.linearVelocity.set(0.1f, 0);
         playerBody = world.createBody(bodyDef);
         polygonShape.setAsBox(13 / PPM, 13 / PPM);
         fixtureDef.shape = polygonShape;
         fixtureDef.filter.categoryBits = BIT_PLAYER;
-        fixtureDef.filter.maskBits = BIT_RED;
+        fixtureDef.filter.maskBits = BIT_CRYSTAL | BIT_RED;
         playerBody.createFixture(fixtureDef).setUserData("Player");
 
         polygonShape.setAsBox(13 / PPM, 2 / PPM, new Vector2(0, -13 / PPM), 0);
@@ -81,16 +100,16 @@ public class PlayState extends GameState {
 
 
     private void createTiles() {
-        TiledMap tiledMap = new TmxMapLoader().load("maps/level_1.tmx");
+        tiledMap = new TmxMapLoader().load("maps/level_1.tmx");
         mapRenderer = new OrthogonalTiledMapRenderer(tiledMap);
         tileSize = Integer.parseInt(tiledMap.getProperties().get("tilewidth").toString());
 
         TiledMapTileLayer layer;
-        layer = (TiledMapTileLayer) tiledMap.getLayers().get("Red layer");
+        layer = (TiledMapTileLayer) tiledMap.getLayers().get("Red blocks");
         createLayer(layer, BIT_RED);
-        layer = (TiledMapTileLayer) tiledMap.getLayers().get("Green layer");
+        layer = (TiledMapTileLayer) tiledMap.getLayers().get("Green blocks");
         createLayer(layer, BIT_GREEN);
-        layer = (TiledMapTileLayer) tiledMap.getLayers().get("Blue layer");
+        layer = (TiledMapTileLayer) tiledMap.getLayers().get("Blue blocks");
         createLayer(layer, BIT_BLUE);
     }
 
@@ -129,12 +148,55 @@ public class PlayState extends GameState {
     }
 
 
+    private void createCrystals() {
+        crystals = new Array<Crystal>();
+
+        MapLayer layer = tiledMap.getLayers().get("Crystals");
+        BodyDef bodyDef = new BodyDef();
+        FixtureDef fixtureDef = new FixtureDef();
+        CircleShape circleShape = new CircleShape();
+        Body body;
+        Crystal crystal;
+
+        for (MapObject mapObject : layer.getObjects()) {
+            bodyDef.type = BodyDef.BodyType.StaticBody;
+            float x = Float.parseFloat(mapObject.getProperties().get("x").toString()) / PPM;
+            float y = Float.parseFloat(mapObject.getProperties().get("y").toString()) / PPM;
+            bodyDef.position.set(x, y);
+
+            circleShape.setRadius(8 / PPM);
+            fixtureDef.shape = circleShape;
+            fixtureDef.isSensor = true;
+            fixtureDef.filter.categoryBits = BIT_CRYSTAL;
+            fixtureDef.filter.maskBits = BIT_PLAYER;
+
+            body = world.createBody(bodyDef);
+            body.createFixture(fixtureDef).setUserData("crystal");
+            crystal = new Crystal(body);
+            crystals.add(crystal);
+            body.setUserData(crystal);
+        }
+    }
+
+
     public void update(float deltaTime) {
         handleInput();
 
         world.step(deltaTime, 6, 2);
 
+        Array<Body> bodiesToRemove = contactListener.getBodiesToRemove();
+        for (int i = 0; i < bodiesToRemove.size; i++) {
+            Body body = bodiesToRemove.get(i);
+            crystals.removeValue((Crystal) body.getUserData(), true);
+            world.destroyBody(body);
+            player.collectCrystal();
+        }
+        bodiesToRemove.clear();
+
         player.update(deltaTime);
+
+        for (int i = 0; i < crystals.size; i++)
+            crystals.get(i).update(deltaTime);
     }
 
 
@@ -155,7 +217,11 @@ public class PlayState extends GameState {
 
         player.render(spriteBatch);
 
-        renderer.render(world, box2DCamera.combined);
+        for (int i = 0; i < crystals.size; i++)
+            crystals.get(i).render(spriteBatch);
+
+        if (debug)
+            debugRenderer.render(world, box2DCamera.combined);
     }
 
 

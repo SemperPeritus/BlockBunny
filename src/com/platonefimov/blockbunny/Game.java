@@ -51,7 +51,6 @@ public class Game implements ApplicationListener {
         spriteBatch = new SpriteBatch();
 
         resources = new Resources();
-        resources.loadTexture("images/bunny.png", "bunny");
 
         stateManager = new StateManager(this);
 

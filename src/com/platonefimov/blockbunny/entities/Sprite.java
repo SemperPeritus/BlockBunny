@@ -60,8 +60,8 @@ public abstract class Sprite {
     public void render(SpriteBatch spriteBatch) {
         spriteBatch.begin();
 
-        spriteBatch.draw(animation.getFrame(), body.getPosition().x * PPM - width * DIV_SCALE,
-                body.getPosition().y * PPM - height * DIV_SCALE);
+        spriteBatch.draw(animation.getFrame(), body.getPosition().x * PPM - width / 2,
+                body.getPosition().y * PPM - height / 2);
 
         spriteBatch.end();
     }

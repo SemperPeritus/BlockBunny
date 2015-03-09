@@ -4,6 +4,9 @@ package com.platonefimov.blockbunny.managers;
 
 public class Variables {
 
+    // Main
+    public static boolean debug = false;
+
     // Game block
     public static final String TITLE = "Block Bunny";
     public static final int V_WIDTH = 320;
@@ -23,7 +26,8 @@ public class Variables {
     public static final short BIT_RED = 2;
     public static final short BIT_GREEN = 4;
     public static final short BIT_BLUE = 8;
+    public static final short BIT_CRYSTAL = 16;
 
-    public static final float JUMP_FORCE = 200f;
+    public static final float JUMP_FORCE = 250f;
 
 }
