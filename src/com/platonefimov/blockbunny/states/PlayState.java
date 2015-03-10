@@ -19,6 +19,7 @@ import static com.platonefimov.blockbunny.managers.Variables.*;
 
 import com.platonefimov.blockbunny.Game;
 import com.platonefimov.blockbunny.entities.Crystal;
+import com.platonefimov.blockbunny.entities.HUD;
 import com.platonefimov.blockbunny.entities.Player;
 import com.platonefimov.blockbunny.managers.GameKeys;
 import com.platonefimov.blockbunny.managers.StateManager;
@@ -44,6 +45,8 @@ public class PlayState extends GameState {
 
     private Array<Crystal> crystals;
 
+    private HUD hud;
+
 
     public PlayState(StateManager stateManager) {
         super(stateManager);
@@ -56,17 +59,18 @@ public class PlayState extends GameState {
         box2DCamera.setToOrtho(false, V_WIDTH / PPM, V_HEIGHT / PPM);
 
         loadResources();
-
         createPlayer();
         createTiles();
-
         createCrystals();
+
+        hud = new HUD(player);
     }
 
 
     private void loadResources() {
         Game.resources.loadTexture("images/bunny.png", "bunny");
         Game.resources.loadTexture("images/crystal.png", "crystal");
+        Game.resources.loadTexture("images/hud.png", "hud");
     }
 
 
@@ -78,7 +82,7 @@ public class PlayState extends GameState {
 
         bodyDef.position.set(50 / PPM, 200 / PPM);
         bodyDef.type = BodyDef.BodyType.DynamicBody;
-        bodyDef.linearVelocity.set(0.1f, 0);
+        bodyDef.linearVelocity.set(0.5f, 0);
         playerBody = world.createBody(bodyDef);
         polygonShape.setAsBox(13 / PPM, 13 / PPM);
         fixtureDef.shape = polygonShape;
@@ -204,11 +208,44 @@ public class PlayState extends GameState {
         if (GameKeys.isPressed(GameKeys.BUTTON_1))
             if (contactListener.isPlayerOnGround())
                 player.body.applyForceToCenter(0, JUMP_FORCE, true);
+
+        if (GameKeys.isPressed(GameKeys.BUTTON_2))
+            switchBlocks();
+    }
+
+
+    private void switchBlocks() {
+        Filter filter = player.body.getFixtureList().first().getFilterData();
+        short bits = filter.maskBits;
+
+        if ((bits & BIT_RED) != 0) {
+            bits &= ~BIT_RED;
+            bits |= BIT_GREEN;
+        }
+        else if ((bits & BIT_GREEN) != 0) {
+            bits &= ~BIT_GREEN;
+            bits |= BIT_BLUE;
+        }
+        else if ((bits & BIT_BLUE) != 0) {
+            bits &= ~BIT_BLUE;
+            bits |= BIT_RED;
+        }
+
+        filter.maskBits = bits;
+        player.body.getFixtureList().first().setFilterData(filter);
+
+        filter = player.body.getFixtureList().get(1).getFilterData();
+        bits &= BIT_CRYSTAL;
+        filter.maskBits = bits;
+        player.body.getFixtureList().get(1).setFilterData(filter);
     }
 
 
     public void render() {
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
+
+        camera.position.set(player.getPosition().x * PPM + V_WIDTH / 4, V_HEIGHT / 2, 0);
+        camera.update();
 
         mapRenderer.setView(camera);
         mapRenderer.render();
@@ -219,6 +256,9 @@ public class PlayState extends GameState {
 
         for (int i = 0; i < crystals.size; i++)
             crystals.get(i).render(spriteBatch);
+
+        spriteBatch.setProjectionMatrix(hudCamera.combined);
+        hud.render(spriteBatch);
 
         if (debug)
             debugRenderer.render(world, box2DCamera.combined);
